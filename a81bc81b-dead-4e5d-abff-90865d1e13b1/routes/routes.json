@@ -1,61 +1,12 @@
 {
-    "api":[
-        {
-            "method":"GET",
-            "endpoint":"/product/{id}",
-            "middleware":[],
-            "config":{
-                "response_type":"synchronous"
-            },
-            "outcomes":[
-                {
-                    "type":"process_workflow",
-                    "workflow_name":"get_product_by_id",
-                    "config":{
-                        "output_format":"json"
-                    }
-                }
-            ]
-        },
-        {
-            "method":"POST",
-            "endpoint":"/product",
-            "middleware":[],
-            "config":{
-                "response_type":"asynchronous"
-            },
-            "outcomes":[
-                {
-                    "type":"process_workflow",
-                    "workflow_name":"save_product",
-                    "config":{
-                        "output_format":"json"
-                    }
-                }
-            ]
-        }
-    ],
-    "websoket":[
-        {
-            "event":"initialize",
-            "middleware":[],
-            "outcomes":{
-                "type":"process_workflow",
-                "workflow_name":"initialize_websocket"
-            }
-        },
-        {
-            "event":"product:creation:status:update",
-            "middleware":[],
-            "outcomes":{
-                "type":"broadcast",
-                "method":"websocket",
-                "config":{
-                    "channel_id":"{{user_channel}}"
-                }
-            }
-        }
-    ],
-    "kafka":{}
+  "routes": [
+    "event:user_created",
+    "event:order_placed",
+    "event:payment_success"
+  ],
+  "outcomes": {
+    "user_created": "{ \"workflow\": \"send_welcome_email\" }",
+    "order_placed": "{ \"workflow\": \"reserve_stock\" }",
+    "payment_success": "{ \"workflow\": \"generate_invoice\" }"
+  }
 }
-
