@@ -4,6 +4,7 @@ import redis
 import subprocess
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+COMPONENTS_DIR = os.path.join(BASE_DIR)
 
 def run_cmd(cmd):
     """Run shell commands and capture output."""
@@ -18,54 +19,48 @@ def deploy():
     # Connect to Redis
     client = redis.Redis(host="localhost", port=6379, db=0)
 
-    # Step 1: Git pull latest branch
-    print("Pulling latest Git changes...")
+    # Flush Redis
+    print("Step 1: Clearing Redis...")
+    client.flushdb()
+
+    # Git pull
+    print("Step 2: Pulling latest Git changes...")
     current_branch = run_cmd("git branch --show-current")
     run_cmd(f"git pull origin {current_branch}")
 
-    # Step 2: Process each component folder
-    print("Processing components...")
-    for comp_name in os.listdir(BASE_DIR):
-        comp_path = os.path.join(BASE_DIR, comp_name)
+    # Process each component
+    print("Step 3: Processing components...")
+    if not os.path.exists(COMPONENTS_DIR):
+        raise FileNotFoundError("component/ directory not found!")
+
+    for comp_name in os.listdir(COMPONENTS_DIR):
+        comp_path = os.path.join(COMPONENTS_DIR, comp_name)
         if not os.path.isdir(comp_path):
             continue
-        routes_dir = os.path.join(comp_path, "routes")
-        if not os.path.exists(routes_dir):
-            continue  # skip if not a component folder
 
-        print(f"Component: {comp_name}")
+        print(f"Processing component: {comp_name}")
 
-        comp_key = f"{comp_name}:routes"
-        client.delete(comp_key)  # clear old routes for this component
-
-        # --- Load ALL routes.json files ---
-        for file in os.listdir(routes_dir):
-            if not file.endswith(".json"):
-                continue
-
-            routes_file = os.path.join(routes_dir, file)
-            print(f"Processing {routes_file}")
-
+        # --- Load routes.json ---
+        routes_file = os.path.join(comp_path, "routes", "routes.json")
+        if os.path.exists(routes_file):
             with open(routes_file, "r") as f:
-                try:
-                    data = json.load(f)
-                except json.JSONDecodeError as e:
-                    print(f"Invalid JSON in {routes_file}: {e}")
-                    continue
+                data = json.load(f)
 
-            # Process API, WebSocket, Kafka sections
-            for section in ["api", "websocket", "kafka"]:
-                for route in data.get(section, []):
-                    event = route.get("event")
-                    actions = json.dumps(route.get("actions", []))
+            comp_key = f"{comp_name}:routes"
+            client.delete(comp_key)
 
-                    if event:
-                        client.sadd(comp_key, f"event:{event}")
-                        client.hset(f"event:{event}", "outcomes", actions)
+            for route in data.get("routes", []):
+                client.sadd(comp_key, route)
 
-            print(f"Routes loaded from {file}")
+            for ev, oc in data.get("outcomes", {}).items():
+                client.hset(f"event:{ev}", "outcomes", oc)
 
-        # --- Load middleware files ---
+            print(f"Routes loaded for {comp_name}")
+
+        else:
+            print(f"No route.json found for {comp_name}")
+
+        # Load middleware files
         middleware_dir = os.path.join(comp_path, "middleware")
         if os.path.exists(middleware_dir):
             for mw_type in os.listdir(middleware_dir):
@@ -77,6 +72,7 @@ def deploy():
                             with open(file_path, "r") as f:
                                 content = f.read()
 
+                            # Store in Redis
                             redis_key = f"{comp_name}:middleware:{mw_type}:{file}"
                             client.set(redis_key, content)
                             print(f"Loaded middleware: {redis_key}")

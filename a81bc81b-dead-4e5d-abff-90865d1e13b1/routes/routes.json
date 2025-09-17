@@ -1,12 +1,59 @@
 {
-  "routes": [
-    "event:user_created",
-    "event:order_placed",
-    "event:payment_success"
+  "api":[
+	  {
+			 "event":"test_event",
+			 "config":{
+				 "method": "GET",
+				 "endpoint":""
+			 },
+			 "middleware":["<middleware key>"],
+			 "actions":[
+				 {
+					 "type":"execute_workflow",
+					 "workflow":"",
+					 "config":{  
+						 "response_type":"synchronous",
+						 "headers":[]
+					 }
+				 }
+			 ]
+	  }
   ],
-  "outcomes": {
-    "user_created": "{ \"workflow\": \"send_welcome_email\" }",
-    "order_placed": "{ \"workflow\": \"reserve_stock\" }",
-    "payment_success": "{ \"workflow\": \"generate_invoice\" }"
-  }
+  "websocket":[
+	  {
+			 "event":"test_event1",
+			 "config":{
+				 "websocket_method":""
+			 },
+			 "middleware":["<middleware key>"],
+			 "actions":[
+				 {
+					 "type":"execute_workflow",
+					 "workflow":"",
+					 "config":{
+						 "channel_id":""
+					 }
+				 }
+			 ]
+	  }
+  ],
+  "kafka":[
+	  {
+			 "event":"<unique name for the event>",
+			 "config":{
+				 "kafka_topic":""
+			 },
+			 "middleware":["<middleware key>"],
+			 "actions":[
+				 {
+					 "type":"execute_workflow",
+					 "workflow":"",
+					 "config":{
+						 "topic_id":""
+					 }
+				 }
+			 ]
+	  }
+  ]
+  
 }
